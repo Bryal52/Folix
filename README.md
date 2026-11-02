@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/logo.png" width="140" alt="Folix">
+  <img src="resources/icon.png" width="140" alt="Folix">
 </p>
 
 <h1 align="center">Folix</h1>
