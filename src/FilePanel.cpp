@@ -5,6 +5,7 @@
 #include "FileModel.h"
 #include "FileTypes.h"
 #include "Log.h"
+#include "Platform.h"
 #include "Preview.h"
 #include "SizeIndex.h"
 #include "Tools.h"
@@ -212,7 +213,7 @@ FilePanel::FilePanel(QWidget* parent) : QWidget(parent)
 
     m_refresh = new QToolButton(this);
     m_refresh->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
-    m_refresh->setToolTip(QStringLiteral("Обновить (⌘R)"));
+    m_refresh->setToolTip(Platform::keys(QStringLiteral("Обновить (⌘R)")));
     m_refresh->setAutoRaise(true);
     m_refresh->setFocusPolicy(Qt::NoFocus);
 

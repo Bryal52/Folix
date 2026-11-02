@@ -1,6 +1,6 @@
 // Turns the square logo (rounded tile on a black background) into a macOS icon master:
 // 1024×1024, transparent corners, tile on Apple's 824 px grid with a soft shadow.
-// Usage: makeicon <logo.png> <out.png>
+// Usage: makeicon <logo.png> <out.png> [out.ico]   (the .ico is for the Windows build)
 
 #include <QImage>
 #include <QPainter>
@@ -72,6 +72,13 @@ int main(int argc, char* argv[])
     if (!out.save(QString::fromLocal8Bit(argv[2]))) {
         std::fprintf(stderr, "cannot write %s\n", argv[2]);
         return 1;
+    }
+    if (argc > 3) {
+        const QImage ico = out.scaled(256, 256, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        if (!ico.save(QString::fromLocal8Bit(argv[3]), "ICO")) {
+            std::fprintf(stderr, "cannot write %s\n", argv[3]);
+            return 1;
+        }
     }
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "Tools.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QHash>
@@ -18,6 +19,16 @@ QString findTool(const QString& name)
     if (cache.contains(name))
         return cache.value(name);
 
+#ifdef Q_OS_WIN
+    // Next to Folix.exe first (ffmpeg ships with the Windows build), then the usual places.
+    const QStringList dirs = {
+        QCoreApplication::applicationDirPath(),
+        QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA")) + QStringLiteral("/Android/Sdk/platform-tools"),
+    };
+    QString found = QStandardPaths::findExecutable(name, dirs);
+    if (found.isEmpty())
+        found = QStandardPaths::findExecutable(name);
+#else
     QStringList dirs = {
         QStringLiteral("/opt/homebrew/bin"),
         QStringLiteral("/usr/local/bin"),
@@ -33,6 +44,7 @@ QString findTool(const QString& name)
             break;
         }
     }
+#endif
     cache.insert(name, found);
     return found;
 }

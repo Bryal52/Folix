@@ -1,5 +1,7 @@
 #include "LocalBackend.h"
 
+#include "Platform.h"
+
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -10,10 +12,16 @@
 #include <QMutex>
 #include <QWaitCondition>
 
+#ifdef Q_OS_MACOS
 #include <fcntl.h>
 #include <sys/attr.h>
 #include <sys/vnode.h>
 #include <unistd.h>
+#elif defined(Q_OS_WIN)
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 #include <cstring>
 #include <thread>
@@ -56,6 +64,11 @@ void copyRange(const QString& from, const QString& to, qint64 offset, qint64 len
 
 } // namespace
 
+QString LocalBackend::title() const
+{
+    return Platform::localName();
+}
+
 QString LocalBackend::homePath() const
 {
     return QDir::homePath();
@@ -63,6 +76,19 @@ QString LocalBackend::homePath() const
 
 QList<Entry> LocalBackend::list(const QString& dir)
 {
+#ifdef Q_OS_WIN
+    if (dir == QLatin1String("/")) {
+        // "This PC": every drive
+        QList<Entry> drives;
+        for (const QFileInfo& fi : QDir::drives()) {
+            Entry e;
+            e.name = fi.absolutePath().left(2);
+            e.isDir = true;
+            drives.append(e);
+        }
+        return drives;
+    }
+#endif
     const QFileInfo dirInfo(dir);
     if (!dirInfo.exists() || !dirInfo.isDir())
         throw FsError(QStringLiteral("Папка не найдена: %1").arg(dir));
@@ -169,6 +195,12 @@ qint64 LocalBackend::freeSpace(const QString& path)
 
 bool LocalBackend::skipInScan(const QString& path) const
 {
+#ifdef Q_OS_WIN
+    // Recycle bin and system restore data are not readable anyway.
+    const QString name = path.mid(path.lastIndexOf(QLatin1Char('/')) + 1);
+    return name.compare(QLatin1String("$Recycle.Bin"), Qt::CaseInsensitive) == 0
+        || name.compare(QLatin1String("System Volume Information"), Qt::CaseInsensitive) == 0;
+#else
     // Other apps' sandboxes (macOS asks for permission), cloud placeholders (reading them
     // downloads listings) and the Trash (needs Full Disk Access).
     static const QStringList skipped = [] {
@@ -184,8 +216,10 @@ bool LocalBackend::skipInScan(const QString& path) const
             return true;
     }
     return false;
+#endif
 }
 
+#ifdef Q_OS_MACOS
 SizeMap LocalBackend::scanTree(const QString& root, const std::atomic_bool* cancel, const ScanProgress& progress)
 {
     // Several threads share a queue of folders. Each folder is read with getattrlistbulk, which
@@ -317,3 +351,95 @@ SizeMap LocalBackend::scanTree(const QString& root, const std::atomic_bool* canc
         progress(s.files);
     return aggregateSizes(root, s.own);
 }
+#elif defined(Q_OS_WIN)
+SizeMap LocalBackend::scanTree(const QString& root, const std::atomic_bool* cancel, const ScanProgress& progress)
+{
+    // Same idea as on the Mac: several threads share a queue of folders; FindFirstFileEx with
+    // FIND_FIRST_EX_LARGE_FETCH returns names, types and sizes of a folder in large batches.
+    struct Shared {
+        QMutex mutex;
+        QWaitCondition wake;
+        QStringList queue;
+        int active = 0;
+        SizeMap own;
+        qint64 files = 0;
+    } s;
+    s.own.insert(root, 0);
+    s.queue << root;
+    auto cancelled = [cancel] { return cancel && cancel->load(); };
+
+    auto work = [&] {
+        for (;;) {
+            QString dir;
+            {
+                QMutexLocker lock(&s.mutex);
+                while (s.queue.isEmpty() && s.active > 0 && !cancelled())
+                    s.wake.wait(&s.mutex, QDeadlineTimer(100));
+                if (cancelled() || s.queue.isEmpty()) {
+                    s.wake.wakeAll();
+                    return;
+                }
+                dir = s.queue.takeLast();
+                ++s.active;
+            }
+
+            qint64 sum = 0;
+            qint64 files = 0;
+            QStringList subdirs;
+            const std::wstring pattern = QDir::toNativeSeparators(dir + QStringLiteral("/*")).toStdWString();
+            WIN32_FIND_DATAW fd;
+            HANDLE h = FindFirstFileExW(pattern.c_str(), FindExInfoBasic, &fd, FindExSearchNameMatch, nullptr,
+                                        FIND_FIRST_EX_LARGE_FETCH);
+            if (h != INVALID_HANDLE_VALUE) {
+                do {
+                    const QString name = QString::fromWCharArray(fd.cFileName);
+                    if (name == QLatin1String(".") || name == QLatin1String(".."))
+                        continue;
+                    if (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+                        continue;   // junctions and links would count things twice
+                    if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                        const QString child = joinPath(dir, name);
+                        if (!skipInScan(child))
+                            subdirs << child;
+                    } else {
+                        sum += (qint64(fd.nFileSizeHigh) << 32) | qint64(fd.nFileSizeLow);
+                        ++files;
+                    }
+                } while (FindNextFileW(h, &fd));
+                FindClose(h);
+            }
+
+            qint64 filesNow = 0;
+            {
+                QMutexLocker lock(&s.mutex);
+                s.own[dir] += sum;
+                for (const QString& c : std::as_const(subdirs))
+                    s.own.insert(c, 0);
+                s.queue += subdirs;
+                s.files += files;
+                filesNow = s.files;
+                --s.active;
+                s.wake.wakeAll();
+            }
+            if (progress && (filesNow & ~0xFFF) != ((filesNow - files) & ~0xFFF))
+                progress(filesNow);
+        }
+    };
+
+    std::vector<std::thread> threads;
+    for (int i = 0; i < 8; ++i)
+        threads.emplace_back(work);
+    for (std::thread& t : threads)
+        t.join();
+    if (cancelled())
+        throw Cancelled();
+    if (progress)
+        progress(s.files);
+    return aggregateSizes(root, s.own);
+}
+#else
+SizeMap LocalBackend::scanTree(const QString& root, const std::atomic_bool* cancel, const ScanProgress& progress)
+{
+    return Backend::scanTree(root, cancel, progress);
+}
+#endif

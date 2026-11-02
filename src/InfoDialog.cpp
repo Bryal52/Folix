@@ -2,6 +2,7 @@
 
 #include "Devices.h"
 #include "FileTypes.h"
+#include "Platform.h"
 #include "Preview.h"
 #include "SizeIndex.h"
 #include "Tools.h"
@@ -183,11 +184,10 @@ InfoDialog::InfoDialog(QWidget* parent, const BackendPtr& b, const QString& dir,
 
     auto* buttons = new QDialogButtonBox(this);
     if (b->isLocal()) {
-        QPushButton* finder = buttons->addButton(QStringLiteral("Показать в Finder"), QDialogButtonBox::ActionRole);
+        QPushButton* finder = buttons->addButton(QStringLiteral("Показать в ") + Platform::fileManagerName(),
+                                                 QDialogButtonBox::ActionRole);
         finder->setAutoDefault(false);
-        connect(finder, &QPushButton::clicked, this, [firstPath] {
-            QProcess::startDetached(QStringLiteral("/usr/bin/open"), {QStringLiteral("-R"), firstPath});
-        });
+        connect(finder, &QPushButton::clicked, this, [firstPath] { Platform::reveal(firstPath); });
     }
     QPushButton* close = buttons->addButton(QStringLiteral("Закрыть"), QDialogButtonBox::RejectRole);
     close->setDefault(true);

@@ -16,6 +16,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#ifdef Q_OS_MACOS
+
 namespace {
 
 QString bundlePath()
@@ -137,3 +139,15 @@ void ask(QWidget* parent, bool force)
 }
 
 } // namespace FullDiskAccess
+
+#else   // Windows has no per-folder permission prompts.
+
+namespace FullDiskAccess {
+
+bool granted() { return true; }
+void openSettings() {}
+void ask(QWidget*, bool) {}
+
+} // namespace FullDiskAccess
+
+#endif

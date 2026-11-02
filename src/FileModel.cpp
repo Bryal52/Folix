@@ -183,8 +183,13 @@ QVariant FileModel::data(const QModelIndex& index, int role) const
                                                      : e.mtime.toString(QStringLiteral("dd.MM.yyyy HH:mm"));
         }
         break;
-    case Qt::DecorationRole:
-        if (index.column() == Name && e.isDir && !m_localDir.isEmpty() && e.name.endsWith(QLatin1String(".app"))) {
+    case Qt::DecorationRole: {
+#ifdef Q_OS_WIN
+        const bool ownIcon = !e.isDir && e.name.endsWith(QLatin1String(".exe"), Qt::CaseInsensitive);
+#else
+        const bool ownIcon = e.isDir && e.name.endsWith(QLatin1String(".app"));
+#endif
+        if (index.column() == Name && ownIcon && !m_localDir.isEmpty()) {
             const QString path = joinPath(m_localDir, e.name);
             auto it = m_appIcons.find(path);
             if (it == m_appIcons.end()) {
@@ -196,6 +201,7 @@ QVariant FileModel::data(const QModelIndex& index, int role) const
         if (index.column() == Name)
             return fileIcon(t.cat);
         break;
+    }
     case Qt::TextAlignmentRole:
         if (index.column() == Size || index.column() == Date)
             return int(Qt::AlignRight | Qt::AlignVCenter);

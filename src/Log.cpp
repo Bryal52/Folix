@@ -10,16 +10,27 @@
 #include <csignal>
 #include <cstdio>
 #include <cstring>
+
+#ifdef Q_OS_WIN
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
 #include <execinfo.h>
 #include <fcntl.h>
 #include <unistd.h>
+#endif
 
 namespace {
 
 constexpr qint64 kMaxSize = 2 * 1024 * 1024;
 
 QRecursiveMutex g_mutex;   // a Qt warning raised while writing comes back here
+#ifdef Q_OS_WIN
+HANDLE g_crashFile = INVALID_HANDLE_VALUE;
+#else
 int g_crashFd = -1;
+#endif
 
 const char* levelName(Log::Level level)
 {
@@ -40,10 +51,43 @@ void onQtMessage(QtMsgType type, const QMessageLogContext&, const QString& msg)
         Log::error(QStringLiteral("Qt"), msg);
 }
 
+#ifdef Q_OS_WIN
+void writeRaw(const char* s)
+{
+    DWORD written = 0;
+    if (g_crashFile != INVALID_HANDLE_VALUE)
+        WriteFile(g_crashFile, s, DWORD(std::strlen(s)), &written, nullptr);
+}
+
+LONG WINAPI onCrash(EXCEPTION_POINTERS* info)
+{
+    char line[160];
+    std::snprintf(line, sizeof(line), "\n*** Folix аварийно завершился: исключение 0x%08lX по адресу %p\n***\n",
+                  info->ExceptionRecord->ExceptionCode, info->ExceptionRecord->ExceptionAddress);
+    writeRaw(line);
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+void openCrashFile()
+{
+    if (g_crashFile != INVALID_HANDLE_VALUE)
+        CloseHandle(g_crashFile);
+    g_crashFile = CreateFileW(reinterpret_cast<const wchar_t*>(Log::filePath().utf16()), FILE_APPEND_DATA,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL, nullptr);
+}
+#else
 void writeRaw(const char* s)
 {
     if (g_crashFd >= 0)
         ::write(g_crashFd, s, std::strlen(s));
+}
+
+void openCrashFile()
+{
+    if (g_crashFd >= 0)
+        ::close(g_crashFd);
+    g_crashFd = ::open(QFile::encodeName(Log::filePath()).constData(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
 }
 
 // Only async-signal-safe calls in here.
@@ -61,6 +105,7 @@ void onCrash(int sig)
     std::signal(sig, SIG_DFL);
     std::raise(sig);
 }
+#endif
 
 } // namespace
 
@@ -72,7 +117,11 @@ Log& Log::instance()
 
 QString Log::filePath()
 {
+#ifdef Q_OS_WIN
+    const QString dir = QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA")) + QStringLiteral("/Folix/Logs");
+#else
     const QString dir = QDir::homePath() + QStringLiteral("/Library/Logs/Folix");
+#endif
     QDir().mkpath(dir);
     return dir + QStringLiteral("/folix.log");
 }
@@ -80,9 +129,13 @@ QString Log::filePath()
 void Log::install()
 {
     qInstallMessageHandler(onQtMessage);
-    g_crashFd = ::open(QFile::encodeName(filePath()).constData(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
+    openCrashFile();
+#ifdef Q_OS_WIN
+    SetUnhandledExceptionFilter(onCrash);
+#else
     for (int sig : {SIGSEGV, SIGBUS, SIGABRT, SIGFPE, SIGILL})
         std::signal(sig, onCrash);
+#endif
     info(QStringLiteral("Folix"), QStringLiteral("запуск"));
 }
 
@@ -98,10 +151,7 @@ void Log::write(Level level, const QString& where, const QString& message)
         if (QFileInfo(path).size() > kMaxSize) {
             QFile::remove(path + QStringLiteral(".1"));
             QFile::rename(path, path + QStringLiteral(".1"));
-            if (g_crashFd >= 0) {
-                ::close(g_crashFd);
-                g_crashFd = ::open(QFile::encodeName(path).constData(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
-            }
+            openCrashFile();
         }
         QFile f(path);
         if (f.open(QIODevice::Append | QIODevice::Text)) {

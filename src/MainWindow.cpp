@@ -11,6 +11,7 @@
 #include "LogViewer.h"
 #include "LocalBackend.h"
 #include "Operations.h"
+#include "Platform.h"
 #include "Preview.h"
 #include "Protection.h"
 #include "SizeIndex.h"
@@ -58,7 +59,7 @@ QString describe(const QList<Entry>& items)
 
 QIcon appIcon()
 {
-    return QIcon(QCoreApplication::applicationDirPath() + QStringLiteral("/../Resources/Folix.icns"));
+    return QIcon(QStringLiteral(":/icon.png"));
 }
 
 void reportErrors(QWidget* parent, const QString& title, const JobResult& r)
@@ -165,15 +166,16 @@ void MainWindow::buildMenus()
     m_actRename = add(file, QStringLiteral("Переименовать"), {QKeySequence(Qt::SHIFT | Qt::Key_F6), Qt::Key_F2},
                       [this] { renameItem(); });
     m_actDelete = add(file, QStringLiteral("Удалить"),
-                      {Qt::Key_F8, QKeySequence(Qt::CTRL | Qt::Key_8), QKeySequence(Qt::CTRL | Qt::Key_Backspace)},
+                      {Qt::Key_F8, QKeySequence(Qt::CTRL | Qt::Key_8), QKeySequence(Qt::CTRL | Qt::Key_Backspace),
+                       Qt::Key_Delete},
                       [this] { removeItems(); });
     file->addSeparator();
-    m_actFinder = add(file, QStringLiteral("Показать в Finder"), {QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_R)}, [this] {
+    m_actFinder = add(file, QStringLiteral("Показать в ") + Platform::fileManagerName(),
+                      {QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_R)}, [this] {
         FilePanel* p = m_active;
         if (!p->backend() || !p->backend()->isLocal())
             return;
-        const QString path = p->hasCurrent() ? joinPath(p->dir(), p->currentEntry().name) : p->dir();
-        QProcess::startDetached(QStringLiteral("/usr/bin/open"), {QStringLiteral("-R"), path});
+        Platform::reveal(p->hasCurrent() ? joinPath(p->dir(), p->currentEntry().name) : p->dir());
     });
     add(file, QStringLiteral("Новое FTP-подключение…"), {QKeySequence(Qt::CTRL | Qt::Key_K)},
         [this] { newConnection(m_active); });
@@ -224,14 +226,17 @@ void MainWindow::buildMenus()
     add(go, QStringLiteral("Загрузки"), {QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_L)},
         [this] { goPlace(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)); });
 
+#ifdef Q_OS_MACOS
     QMenu* disks = menuBar()->addMenu(QStringLiteral("Диски"));
     connect(disks, &QMenu::aboutToShow, this, [this, disks] { buildDiskMenu(disks); });
     buildDiskMenu(disks);
+#endif
 
     QMenu* help = menuBar()->addMenu(QStringLiteral("Справка"));
     QAction* aboutAction = help->addAction(QStringLiteral("О программе Folix"));
     aboutAction->setMenuRole(QAction::AboutRole);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::about);
+#ifdef Q_OS_MACOS
     QAction* access = help->addAction(QStringLiteral("Полный доступ к диску…"));
     connect(access, &QAction::triggered, this, [this] {
         if (FullDiskAccess::granted())
@@ -240,6 +245,7 @@ void MainWindow::buildMenus()
         else
             FullDiskAccess::ask(this, true);
     });
+#endif
     QAction* keys = help->addAction(QStringLiteral("Горячие клавиши"));
     connect(keys, &QAction::triggered, this, &MainWindow::about);
 }
@@ -305,8 +311,8 @@ QWidget* MainWindow::buildFunctionBar()
     layout->setContentsMargins(8, 4, 8, 8);
     layout->setSpacing(6);
     for (const Button& b : buttons) {
-        auto* btn = new QPushButton(QString::fromUtf8(b.text), bar);
-        btn->setToolTip(QString::fromUtf8(b.tip));
+        auto* btn = new QPushButton(Platform::keys(QString::fromUtf8(b.text)), bar);
+        btn->setToolTip(Platform::keys(QString::fromUtf8(b.tip)));
         btn->setFocusPolicy(Qt::NoFocus);
         connect(btn, &QPushButton::clicked, this, b.fn);
         layout->addWidget(btn, 1);
@@ -703,16 +709,19 @@ void MainWindow::about()
     box.setWindowModality(Qt::WindowModal);
     box.setIconPixmap(appIcon().pixmap(96, 96));
     box.setText(QStringLiteral("Folix ") + QApplication::applicationVersion());
-    box.setInformativeText(QStringLiteral(
-        "Файловый менеджер для Mac, Android, PS Vita, Nintendo Switch и PS3.\n\n"
+    QString text = QStringLiteral(
+        "Быстрый двухпанельный файловый менеджер.\n\n"
         "F3 — просмотр\nF5 — копировать в другую панель\nF6 — переместить\nF7 — новая папка\n"
         "F8 или ⌘⌫ — удалить\n⇧F6 или F2 — переименовать\n\n"
-        "Размеры папок считаются сами: на Mac при запуске, на устройствах при подключении (⇧⌘R — заново)\n"
-        "⌘I или кнопка «Информация» — свойства\n⌘C / ⌘X / ⌘V — копировать, вырезать, вставить (и с Finder тоже)\n"
+        "Размеры папок считаются сами: на компьютере при запуске, на устройствах при подключении (⇧⌘R — заново)\n"
+        "⌘I или кнопка «Информация» — свойства\n⌘C / ⌘X / ⌘V — копировать, вырезать, вставить (и с %1 тоже)\n"
         "Правый клик — меню действий\nПробел — пересчитать размер папки\nTab — другая панель\n⌫ или ⌘↑ — на уровень выше\n"
         "⌘K — новое FTP-подключение\n⇧⌘. — скрытые файлы\n\n"
-        "Перетаскивание между панелями копирует, с зажатой ⌘ — перемещает.\n"
-        "F-клавиши на Mac нажимаются вместе с fn, поэтому у каждой есть замена через ⌘."));
+        "Перетаскивание между панелями копирует, с зажатой ⌘ — перемещает.").arg(Platform::fileManagerName());
+#ifdef Q_OS_MACOS
+    text += QStringLiteral("\nF-клавиши на Mac нажимаются вместе с fn, поэтому у каждой есть замена через ⌘.");
+#endif
+    box.setInformativeText(Platform::keys(text));
     box.addButton(QStringLiteral("OK"), QMessageBox::AcceptRole);
     box.exec();
 }
@@ -753,7 +762,7 @@ void MainWindow::copyToClipboard(bool cut)
         mime->setUrls(urls);
     }
     QApplication::clipboard()->setMimeData(mime);
-    statusBar()->showMessage(QStringLiteral("%1: %2 — выберите папку и нажмите ⌘V")
+    statusBar()->showMessage(Platform::keys(QStringLiteral("%1: %2 — выберите папку и нажмите ⌘V"))
                                  .arg(cut ? QStringLiteral("Вырезано") : QStringLiteral("Скопировано"))
                                  .arg(items.size() == 1 ? items.first().name : QString::number(items.size()) + QStringLiteral(" объектов")),
                              6000);

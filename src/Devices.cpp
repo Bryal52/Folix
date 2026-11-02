@@ -47,9 +47,18 @@ QList<DeviceChoice> Devices::choices()
     place(QStringLiteral("Документы"), QStandardPaths::DocumentsLocation, QStringLiteral("documents"));
     for (const QStorageInfo& vol : QStorageInfo::mountedVolumes()) {
         const QString root = vol.rootPath();
-        if (!root.startsWith(QLatin1String("/Volumes/")) || !vol.isReady())
+        if (!vol.isReady())
+            continue;
+#ifdef Q_OS_WIN
+        const QString letter = root.left(2);
+        const QString label = vol.name().isEmpty() ? QStringLiteral("Диск %1").arg(letter)
+                                                   : QStringLiteral("%1 (%2)").arg(vol.name(), letter);
+        out.append({QStringLiteral("mac:") + root, label, placeIcon(QStringLiteral("volume"))});
+#else
+        if (!root.startsWith(QLatin1String("/Volumes/")))
             continue;
         out.append({QStringLiteral("mac:") + root, vol.displayName(), placeIcon(QStringLiteral("volume"))});
+#endif
     }
 
     bool first = true;
@@ -76,7 +85,12 @@ QList<DeviceChoice> Devices::choices()
         out.append(c);
     }
 
-    out.append({QStringLiteral("mac:/Applications"), QStringLiteral("Программы"), placeIcon(QStringLiteral("apps")), true});
+#ifdef Q_OS_WIN
+    const QString programs = QDir::fromNativeSeparators(qEnvironmentVariable("ProgramFiles", QStringLiteral("C:/Program Files")));
+#else
+    const QString programs = QStringLiteral("/Applications");
+#endif
+    out.append({QStringLiteral("mac:") + programs, QStringLiteral("Программы"), placeIcon(QStringLiteral("apps")), true});
 
     first = true;
     for (const FtpProfile& p : std::as_const(m_profiles)) {

@@ -3,8 +3,20 @@
 #include <QHash>
 #include <QRegularExpression>
 
+#ifdef Q_OS_WIN
+// On Windows "/" is the list of drives; "C:" in it opens "C:/".
+static bool isDriveName(const QString& s)
+{
+    return s.size() == 2 && s[0].isLetter() && s[1] == QLatin1Char(':');
+}
+#endif
+
 QString joinPath(const QString& dir, const QString& name)
 {
+#ifdef Q_OS_WIN
+    if (dir == QLatin1String("/") && isDriveName(name))
+        return name + QLatin1Char('/');
+#endif
     if (dir.isEmpty())
         return name;
     if (dir.endsWith(QLatin1Char('/')))
@@ -20,6 +32,10 @@ QString parentPath(const QString& path)
     const int i = p.lastIndexOf(QLatin1Char('/'));
     if (i <= 0)
         return QStringLiteral("/");
+#ifdef Q_OS_WIN
+    if (isDriveName(p.left(i)))
+        return p.left(i) + QLatin1Char('/');   // "C:/Users" -> "C:/"
+#endif
     return p.left(i);
 }
 

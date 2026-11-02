@@ -2,6 +2,7 @@
 
 #include "Dialogs.h"
 #include "Log.h"
+#include "Platform.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -89,16 +90,14 @@ LogViewer::LogViewer()
     m_text->setPlaceholderText(QStringLiteral("Ошибок пока не было."));
 
     auto* copy = new QPushButton(QStringLiteral("Скопировать всё"), this);
-    auto* finder = new QPushButton(QStringLiteral("Показать в Finder"), this);
+    auto* finder = new QPushButton(QStringLiteral("Показать в ") + Platform::fileManagerName(), this);
     auto* clear = new QPushButton(QStringLiteral("Очистить"), this);
     for (QPushButton* b : {copy, finder, clear}) {
         b->setAutoDefault(false);
         b->setMinimumWidth(b->sizeHint().width() + 8);
     }
     connect(copy, &QPushButton::clicked, this, [this] { QApplication::clipboard()->setText(m_text->toPlainText()); });
-    connect(finder, &QPushButton::clicked, this, [] {
-        QProcess::startDetached(QStringLiteral("/usr/bin/open"), {QStringLiteral("-R"), Log::filePath()});
-    });
+    connect(finder, &QPushButton::clicked, this, [] { Platform::reveal(Log::filePath()); });
     connect(clear, &QPushButton::clicked, this, [this] {
         if (Dialogs::confirm(this, QStringLiteral("Очистить логи?"), QStringLiteral("Все записи об ошибках будут удалены."),
                              QStringLiteral("Очистить"), true)) {

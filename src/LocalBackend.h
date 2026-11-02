@@ -5,7 +5,7 @@
 class LocalBackend : public Backend {
 public:
     QString id() const override { return QStringLiteral("local"); }
-    QString title() const override { return QStringLiteral("Mac"); }
+    QString title() const override;
     DeviceKind kind() const override { return DeviceKind::Mac; }
     bool isLocal() const override { return true; }
     QString homePath() const override;

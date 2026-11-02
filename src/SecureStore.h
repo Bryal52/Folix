@@ -4,7 +4,7 @@
 #include <QString>
 
 // Small encrypted files in ~/Library/Application Support/Folix.
-// AES-256-CBC + HMAC-SHA256; the key is generated once and kept in the macOS Keychain.
+// macOS: AES-256-CBC + HMAC-SHA256 with the key in the Keychain. Windows: DPAPI (SecureStore_win.cpp).
 namespace SecureStore {
 
 QString directory();

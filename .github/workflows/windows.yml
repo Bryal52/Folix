@@ -1,0 +1,86 @@
+name: Windows build
+
+# Builds Folix for Windows, checks that it starts, and attaches the zip to a release.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the zip to (empty: just build)"
+        required: false
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-qt6-multimedia
+            mingw-w64-ucrt-x86_64-qt6-imageformats
+            mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-ffmpeg
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      - name: Collect Folix with everything it needs
+        run: |
+          VERSION=$(sed -n 's/^project(Folix VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          mkdir -p dist/Folix
+          cp build/Folix.exe dist/Folix/
+          cp /ucrt64/bin/ffmpeg.exe /ucrt64/bin/ffprobe.exe dist/Folix/
+          DEPLOY=$(command -v windeployqt6 || command -v windeployqt || echo /ucrt64/share/qt6/bin/windeployqt.exe)
+          "$DEPLOY" --release --no-translations --compiler-runtime dist/Folix/Folix.exe
+          # Qt's own libraries come from windeployqt; their MSYS2 dependencies are added here.
+          for pass in 1 2 3 4 5; do
+            find dist/Folix -name '*.exe' -o -name '*.dll' | while read -r f; do
+              ldd "$f" | awk '/\/ucrt64\// {print $3}'
+            done | sort -u | while read -r dll; do
+              [ -f "dist/Folix/$(basename "$dll")" ] || cp "$dll" dist/Folix/
+            done
+          done
+          ls dist/Folix | head -80
+
+      - name: Check that Folix starts
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist\Folix\Folix.exe -ArgumentList '--smoke-test' -PassThru -RedirectStandardOutput smoke.txt
+          if (-not $p.WaitForExit(60000)) { Stop-Process -Id $p.Id -Force; throw "Folix did not quit in time" }
+          Get-Content smoke.txt
+          if ($p.ExitCode -ne 0) { throw "Folix exited with code $($p.ExitCode)" }
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist\Folix -DestinationPath "Folix-$env:VERSION-windows-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Folix-windows-x64
+          path: Folix-*-windows-x64.zip
+
+      - name: Attach to release
+        if: github.event_name == 'release' || inputs.tag != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload $env:TAG "Folix-$env:VERSION-windows-x64.zip" --clobber --repo $env:GITHUB_REPOSITORY

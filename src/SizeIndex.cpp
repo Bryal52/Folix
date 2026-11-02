@@ -12,8 +12,10 @@
 #include <QThreadPool>
 #include <QtConcurrent>
 
+#ifdef Q_OS_MACOS
 #include <CoreServices/CoreServices.h>
 #include <dispatch/dispatch.h>
+#endif
 
 namespace {
 
@@ -121,6 +123,7 @@ struct RefreshResult {
     QStringList stale;       // old keys under vanished or rescanned children
 };
 
+#ifdef Q_OS_MACOS
 void fsCallback(ConstFSEventStreamRef, void*, size_t count, void* paths, const FSEventStreamEventFlags*,
                 const FSEventStreamEventId*)
 {
@@ -133,6 +136,7 @@ void fsCallback(ConstFSEventStreamRef, void*, size_t count, void* paths, const F
     QMetaObject::invokeMethod(&SizeIndex::instance(), [dirs] { SizeIndex::instance().onFsEvents(dirs); },
                               Qt::QueuedConnection);
 }
+#endif
 
 } // namespace
 
@@ -150,7 +154,7 @@ struct SizeIndex::Device {
     bool refreshing = false;
     bool saveQueued = false;
     QList<Job> pending;
-    FSEventStreamRef stream = nullptr;
+    void* stream = nullptr;   // FSEventStreamRef on the Mac
     std::shared_ptr<std::atomic<qint64>> files = std::make_shared<std::atomic<qint64>>(0);
     std::shared_ptr<std::atomic_bool> cancel = std::make_shared<std::atomic_bool>(false);
 };
@@ -190,6 +194,18 @@ QString SizeIndex::localRootFor(const QString& path)
     const QString home = QDir::homePath();
     if (within(path, home))
         return home;
+#ifdef Q_OS_WIN
+    // Program Files and whole non-system drives (USB sticks, external and second disks).
+    const QString programs = QDir::fromNativeSeparators(qEnvironmentVariable("ProgramFiles"));
+    if (!programs.isEmpty() && within(path, programs))
+        return programs;
+    if (path.size() >= 2 && path[1] == QLatin1Char(':')) {
+        const QString drive = path.left(2).toUpper();
+        if (drive != qEnvironmentVariable("SystemDrive", QStringLiteral("C:")).toUpper())
+            return drive;
+    }
+    return {};
+#else
     if (within(path, QStringLiteral("/Applications")))
         return QStringLiteral("/Applications");
     if (!path.startsWith(QLatin1String("/Volumes/")))
@@ -201,6 +217,7 @@ QString SizeIndex::localRootFor(const QString& path)
     if (network.contains(QStorageInfo(root).fileSystemType()))
         return {};
     return root;
+#endif
 }
 
 std::shared_ptr<SizeIndex::Device> SizeIndex::device(const BackendPtr& b, const QString& root)
@@ -453,6 +470,9 @@ void SizeIndex::saveSoon(const std::shared_ptr<Device>& d)
 
 void SizeIndex::watch(const std::shared_ptr<Device>& d)
 {
+#ifndef Q_OS_MACOS
+    Q_UNUSED(d)   // live updates use FSEvents; elsewhere sizes are rescanned once per session
+#else
     if (d->stream)
         return;
     CFStringRef root = d->root.toCFString();
@@ -465,8 +485,9 @@ void SizeIndex::watch(const std::shared_ptr<Device>& d)
     if (!d->stream)
         return;
     static dispatch_queue_t queue = dispatch_queue_create("folix.fsevents", DISPATCH_QUEUE_SERIAL);
-    FSEventStreamSetDispatchQueue(d->stream, queue);
-    FSEventStreamStart(d->stream);
+    FSEventStreamSetDispatchQueue(static_cast<FSEventStreamRef>(d->stream), queue);
+    FSEventStreamStart(static_cast<FSEventStreamRef>(d->stream));
+#endif
 }
 
 void SizeIndex::onFsEvents(const QStringList& dirs)
@@ -534,12 +555,15 @@ void SizeIndex::shutdown()
 {
     for (const auto& d : std::as_const(m_devices)) {
         *d->cancel = true;
+#ifdef Q_OS_MACOS
         if (d->stream) {
-            FSEventStreamStop(d->stream);
-            FSEventStreamInvalidate(d->stream);
-            FSEventStreamRelease(d->stream);
+            auto stream = static_cast<FSEventStreamRef>(d->stream);
+            FSEventStreamStop(stream);
+            FSEventStreamInvalidate(stream);
+            FSEventStreamRelease(stream);
             d->stream = nullptr;
         }
+#endif
         if (!d->sizes.isEmpty() && d->saveQueued)
             writeCache(d->key, d->scannedAt, d->sizes);   // keep the latest Mac sizes
     }

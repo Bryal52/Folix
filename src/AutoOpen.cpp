@@ -8,8 +8,13 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSettings>
+#include <QStandardPaths>
 
+#ifdef Q_OS_MACOS
 #include <unistd.h>
+#endif
+
+#ifdef Q_OS_MACOS
 
 namespace {
 
@@ -161,3 +166,27 @@ int ignoredCount()
 }
 
 } // namespace AutoOpen
+
+#else   // Opening drives automatically, ignoring and ejecting them is macOS only.
+
+namespace AutoOpen {
+
+QString supportDir()
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dir);
+    return dir;
+}
+
+QString socketPath() { return QStringLiteral("folix-") + qEnvironmentVariable("USERNAME"); }
+bool isEnabled() { return false; }
+void setEnabled(bool) {}
+void syncOnStartup() {}
+QString volumeUuid(const QString&) { return {}; }
+void ignoreVolume(const QString&) {}
+void clearIgnored() {}
+int ignoredCount() { return 0; }
+
+} // namespace AutoOpen
+
+#endif

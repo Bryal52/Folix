@@ -101,7 +101,12 @@ void openVideo(QWidget* parent, const BackendPtr& b, const QString& path, const 
     const QString local = fetchToCache(parent, b, path, e);
     if (local.isEmpty())
         return;
-    if (native.contains(extensionOf(e.name))) {
+#ifdef Q_OS_WIN
+    const bool builtIn = true;   // the Windows build plays every format through FFmpeg
+#else
+    const bool builtIn = native.contains(extensionOf(e.name));
+#endif
+    if (builtIn) {
         (new VideoViewer(e.name, QUrl::fromLocalFile(local)))->show();
         return;
     }
