@@ -8,6 +8,7 @@
 #include "FullDiskAccess.h"
 #include "InfoDialog.h"
 #include "JobDialog.h"
+#include "LogViewer.h"
 #include "LocalBackend.h"
 #include "Operations.h"
 #include "Preview.h"
@@ -310,6 +311,8 @@ QWidget* MainWindow::buildFunctionBar()
         connect(btn, &QPushButton::clicked, this, b.fn);
         layout->addWidget(btn, 1);
     }
+    layout->addSpacing(2);
+    layout->addWidget(new LogButton(bar));
     return bar;
 }
 

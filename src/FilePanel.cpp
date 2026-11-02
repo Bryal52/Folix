@@ -4,6 +4,7 @@
 #include "Dialogs.h"
 #include "FileModel.h"
 #include "FileTypes.h"
+#include "Log.h"
 #include "Preview.h"
 #include "SizeIndex.h"
 #include "Tools.h"
@@ -365,6 +366,8 @@ void FilePanel::navigate(const QString& dir, const QString& selectName, bool int
             if (m_dir.isEmpty())
                 m_path->setText(dir);
             m_status->setText(QStringLiteral("⚠︎ ") + r.error);
+            if (!interactive)
+                Log::warning(QStringLiteral("Папка"), dir + QStringLiteral(": ") + r.error);
             if (interactive)
                 Dialogs::error(window(), QStringLiteral("Не удалось открыть папку"), r.error);
             return;

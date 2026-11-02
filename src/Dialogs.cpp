@@ -4,6 +4,8 @@
 #include <QMessageBox>
 #include <QPushButton>
 
+#include "Log.h"
+
 namespace Dialogs {
 
 namespace {
@@ -48,6 +50,7 @@ int choose(QWidget* parent, const QString& title, const QString& text, const QSt
 
 void error(QWidget* parent, const QString& title, const QString& text, const QStringList& details)
 {
+    Log::error(title, details.isEmpty() ? text : details.join(QLatin1Char('\n')));
     QMessageBox box(parent);
     prepare(box, title, text);
     box.setIcon(QMessageBox::Warning);

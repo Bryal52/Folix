@@ -1,3 +1,4 @@
+#include "Log.h"
 #include "MainWindow.h"
 
 #include <QApplication>
@@ -12,6 +13,7 @@ int main(int argc, char* argv[])
     QApplication::setApplicationName(QStringLiteral("Folix"));
     QApplication::setOrganizationName(QStringLiteral("Folix"));
     QApplication::setApplicationVersion(QStringLiteral("1.0"));
+    Log::install();
 
     MainWindow window;
     window.show();

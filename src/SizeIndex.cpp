@@ -1,5 +1,6 @@
 #include "SizeIndex.h"
 
+#include "Log.h"
 #include "SecureStore.h"
 
 #include <QCryptographicHash>
@@ -296,6 +297,8 @@ void SizeIndex::startScan(const std::shared_ptr<Device>& d)
                 watch(d);
         } else {
             d->error = r.error;
+            if (!r.error.isEmpty() && r.error != Cancelled().message())
+                Log::warning(QStringLiteral("Размеры папок"), d->root + QStringLiteral(": ") + r.error);
         }
         emit changed(d->backendId);
     });
