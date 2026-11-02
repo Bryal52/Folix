@@ -1,6 +1,7 @@
 // FolixAgent: a tiny background helper (LaunchAgent) that opens newly connected drives in Folix.
 // It reacts only to real external storage (USB / Thunderbolt / SATA / SD), not to disk images,
 // network shares, Time Machine, helper partitions, virtual CDs or drives the user chose to ignore.
+// Installed as ~/Library/LaunchAgents/com.umid.folix.agent.plist; FOLIX_AGENT_DEBUG=1 prints each decision.
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <DiskArbitration/DiskArbitration.h>

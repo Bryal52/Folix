@@ -1,5 +1,6 @@
 // Turns the square logo (rounded tile on a black background) into a macOS icon master:
 // 1024×1024, transparent corners, tile on Apple's 824 px grid with a soft shadow.
+// Usage: makeicon <logo.png> <out.png>
 
 #include <QImage>
 #include <QPainter>

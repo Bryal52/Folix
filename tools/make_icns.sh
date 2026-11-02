@@ -1,5 +1,6 @@
 #!/bin/sh
 # make_icns.sh <makeicon> <logo.png> <out.icns>
+# Builds the app icon in every size macOS needs (16 px to 1024 px) from one square logo.
 set -e
 MAKEICON="$1"
 LOGO="$2"
