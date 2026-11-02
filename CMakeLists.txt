@@ -50,6 +50,8 @@ add_executable(Folix MACOSX_BUNDLE
     ${FOLIX_ICNS}
 )
 
+target_compile_definitions(Folix PRIVATE FOLIX_VERSION="${PROJECT_VERSION}")
+
 target_link_libraries(Folix PRIVATE
     Qt6::Widgets Qt6::Concurrent Qt6::Network Qt6::Multimedia Qt6::MultimediaWidgets CURL::libcurl
     "-framework Security" "-framework CoreFoundation" "-framework CoreServices")

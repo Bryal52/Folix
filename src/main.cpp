@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("Folix"));
     QApplication::setOrganizationName(QStringLiteral("Folix"));
-    QApplication::setApplicationVersion(QStringLiteral("1.0"));
+    QApplication::setApplicationVersion(QStringLiteral(FOLIX_VERSION));
     Log::install();
 
     MainWindow window;

@@ -10,9 +10,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-14%2B-black?logo=apple" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/macOS-27%2B-black?logo=apple" alt="macOS 27+">
   <img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus" alt="C++20">
   <img src="https://img.shields.io/badge/Qt-6-41CD52?logo=qt" alt="Qt 6">
+  <a href="https://github.com/Bryal52/Folix/releases/latest"><img src="https://img.shields.io/github/v/release/Bryal52/Folix?label=версия&color=0a84ff" alt="Версия"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.0.0.dmg"><b>⬇️ Скачать Folix 1.0.0 для macOS</b></a>
 </p>
 
 ---
@@ -70,16 +75,30 @@ Folix записывает каждую ошибку: при копирован�
 
 > На Mac F-клавиши нажимаются вместе с **fn**, поэтому у каждой есть замена через ⌘.
 
-## 🛠 Сборка
+## 📥 Установка
 
-Нужны macOS 14 или новее и Xcode Command Line Tools.
+1. Скачайте **[Folix-1.0.0.dmg](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.0.0.dmg)** со страницы [релизов](https://github.com/Bryal52/Folix/releases/latest).
+2. Откройте его и перетащите **Folix** в папку **«Программы»**.
+3. При первом запуске macOS скажет, что не может проверить разработчика: у Folix нет платной подписи Apple. Откройте **Системные настройки → Конфиденциальность и безопасность** и внизу нажмите **«Всё равно открыть»**. Это нужно сделать только один раз.
+
+**Требования:** macOS 27 или новее, Mac с чипом Apple (M1 и новее).
+
+Для превью видео и работы с телефоном по USB понадобятся бесплатные утилиты:
+
+```sh
+brew install ffmpeg android-platform-tools
+```
+
+## 🛠 Сборка из исходников
+
+Нужны macOS 27 или новее и Xcode Command Line Tools.
 
 ```sh
 brew install cmake ninja qtbase qtmultimedia qtimageformats ffmpeg android-platform-tools
 ./build.sh
 ```
 
-Скрипт соберёт `Folix.app`, положит внутрь всё необходимое и установит программу в папку «Программы».
+Скрипт соберёт `Folix.app`, положит внутрь всё необходимое, установит программу в папку «Программы» и создаст образ `dist/Folix-<версия>.dmg`.
 
 ## 🧩 Из чего сделан
 

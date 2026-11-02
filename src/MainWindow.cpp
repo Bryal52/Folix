@@ -702,7 +702,7 @@ void MainWindow::about()
     QMessageBox box(this);
     box.setWindowModality(Qt::WindowModal);
     box.setIconPixmap(appIcon().pixmap(96, 96));
-    box.setText(QStringLiteral("Folix 1.0"));
+    box.setText(QStringLiteral("Folix ") + QApplication::applicationVersion());
     box.setInformativeText(QStringLiteral(
         "Файловый менеджер для Mac, Android, PS Vita, Nintendo Switch и PS3.\n\n"
         "F3 — просмотр\nF5 — копировать в другую панель\nF6 — переместить\nF7 — новая папка\n"

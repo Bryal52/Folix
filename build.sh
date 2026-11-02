@@ -18,3 +18,13 @@ rm -rf /Applications/Folix.app
 cp -R dist/Folix.app /Applications/
 xattr -dr com.apple.quarantine /Applications/Folix.app 2>/dev/null || true
 echo "Installed /Applications/Folix.app"
+
+# Disk image for GitHub Releases: Folix.app plus a shortcut to Applications
+VERSION=$(sed -n 's/^project(Folix VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+rm -rf dist/dmg "dist/Folix-$VERSION.dmg"
+mkdir -p dist/dmg
+cp -R dist/Folix.app dist/dmg/
+ln -s /Applications dist/dmg/Applications
+hdiutil create -quiet -volname "Folix $VERSION" -srcfolder dist/dmg -ov -format UDZO "dist/Folix-$VERSION.dmg"
+rm -rf dist/dmg
+echo "Disk image dist/Folix-$VERSION.dmg"
