@@ -52,6 +52,7 @@ private:
     bool guardModify(FilePanel* panel, const QList<Entry>& items, const QString& action);
 
     void restoreState();
+    void restorePanels();
     void saveState();
 
     FilePanel* m_left;
@@ -72,6 +73,8 @@ private:
     QAction* m_actRefresh = nullptr;
     QAction* m_actFinder = nullptr;
     QLocalServer* m_server = nullptr;
+    bool m_ready = false;        // panels restored after the start-up permission check
+    QString m_pendingOpen;       // drive to show once ready
 
     struct Clip {
         BackendPtr backend;

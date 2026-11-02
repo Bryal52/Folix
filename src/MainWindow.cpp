@@ -5,6 +5,7 @@
 #include "Devices.h"
 #include "Dialogs.h"
 #include "FilePanel.h"
+#include "FullDiskAccess.h"
 #include "InfoDialog.h"
 #include "JobDialog.h"
 #include "LocalBackend.h"
@@ -36,6 +37,7 @@
 #include <QSplitter>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
 
@@ -121,8 +123,17 @@ MainWindow::MainWindow()
     connect(statusBar(), &QStatusBar::messageChanged, statusBar(),
             [this](const QString& msg) { statusBar()->setVisible(!msg.isEmpty()); });
 
-    // Folder sizes of the Mac home folder: shown from the cache at once, rescanned in the background.
-    SizeIndex::instance().ensure(Devices::instance().local(), QDir::homePath());
+    // Ask for Full Disk Access before any protected folder is touched, so macOS does not
+    // fire a separate prompt for every folder; then open the panels and scan the home folder.
+    QTimer::singleShot(0, this, [this] {
+        FullDiskAccess::ask(this);
+        restorePanels();
+        m_ready = true;
+        if (!m_pendingOpen.isEmpty())
+            openExternal(m_pendingOpen);
+        // Folder sizes of the Mac home folder: shown from the cache at once, rescanned in the background.
+        SizeIndex::instance().ensure(Devices::instance().local(), QDir::homePath());
+    });
 
     // Start the adb server early so the phone shows up in the device list right away.
     if (!Tools::adb().isEmpty())
@@ -220,6 +231,14 @@ void MainWindow::buildMenus()
     QAction* aboutAction = help->addAction(QStringLiteral("О программе Folix"));
     aboutAction->setMenuRole(QAction::AboutRole);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::about);
+    QAction* access = help->addAction(QStringLiteral("Полный доступ к диску…"));
+    connect(access, &QAction::triggered, this, [this] {
+        if (FullDiskAccess::granted())
+            Dialogs::info(this, QStringLiteral("Полный доступ уже есть"),
+                          QStringLiteral("macOS не будет спрашивать разрешения для отдельных папок."));
+        else
+            FullDiskAccess::ask(this, true);
+    });
     QAction* keys = help->addAction(QStringLiteral("Горячие клавиши"));
     connect(keys, &QAction::triggered, this, &MainWindow::about);
 }
@@ -869,6 +888,10 @@ void MainWindow::openExternal(const QString& path)
 {
     if (path.isEmpty() || !QFileInfo(path).isDir())
         return;
+    if (!m_ready) {
+        m_pendingOpen = path;
+        return;
+    }
     m_right->setLocation(QStringLiteral("mac:") + path, path, false);
     setActive(m_right);
     m_right->view()->setFocus();
@@ -886,6 +909,15 @@ void MainWindow::restoreState()
     if (auto* splitter = findChild<QSplitter*>(QStringLiteral("panels")))
         splitter->restoreState(s.value(QStringLiteral("splitter")).toByteArray());
 
+    const bool hidden = s.value(QStringLiteral("showHidden"), false).toBool();
+    m_hiddenAction->setChecked(hidden);
+    m_left->setShowHidden(hidden);
+    m_right->setShowHidden(hidden);
+}
+
+void MainWindow::restorePanels()
+{
+    QSettings s;
     auto restorePanel = [&](FilePanel* p, const QString& prefix, const QString& defaultKey) {
         p->restoreHeader(s.value(prefix + QStringLiteral("/header")).toByteArray());
         QString key = s.value(prefix + QStringLiteral("/key"), defaultKey).toString();
@@ -901,11 +933,6 @@ void MainWindow::restoreState()
     };
     restorePanel(m_left, QStringLiteral("left"), macKey(QStandardPaths::HomeLocation));
     restorePanel(m_right, QStringLiteral("right"), macKey(QStandardPaths::DownloadLocation));
-
-    const bool hidden = s.value(QStringLiteral("showHidden"), false).toBool();
-    m_hiddenAction->setChecked(hidden);
-    m_left->setShowHidden(hidden);
-    m_right->setShowHidden(hidden);
 
     setActive(m_left);
     m_left->view()->setFocus();

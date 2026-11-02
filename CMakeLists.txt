@@ -44,6 +44,7 @@ add_executable(Folix MACOSX_BUNDLE
     src/SizeIndex.cpp src/SizeIndex.h
     src/InfoDialog.cpp src/InfoDialog.h
     src/AutoOpen.cpp src/AutoOpen.h
+    src/FullDiskAccess.cpp src/FullDiskAccess.h
     ${FOLIX_ICNS}
 )
 
