@@ -14,13 +14,13 @@
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows" alt="Windows 10 / 11">
   <img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus" alt="C++20">
   <img src="https://img.shields.io/badge/Qt-6-41CD52?logo=qt" alt="Qt 6">
-  <a href="https://github.com/Bryal52/Folix/releases/latest"><img src="https://img.shields.io/badge/%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F-1.1.0-0a84ff" alt="Версия 1.1.0"></a>
+  <a href="https://github.com/Bryal52/Folix/releases/latest"><img src="https://img.shields.io/badge/%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F-1.1.1-0a84ff" alt="Версия 1.1.1"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0.dmg"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_macOS-1.1.0-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать для macOS" height="36"></a>
+  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.1.dmg"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_macOS-1.1.1-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать для macOS" height="36"></a>
   &nbsp;
-  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0-windows-x64.zip"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_Windows-1.1.0-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать для Windows" height="36"></a>
+  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.1-windows-x64.zip"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_Windows-1.1.1-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать для Windows" height="36"></a>
 </p>
 
 ---
@@ -62,6 +62,9 @@ Folix сам считает размер каждой папки и держит
 ### 🎨 Понятные иконки
 У каждого типа файлов своя иконка: архивы, видео, музыка, документы, установщики, образы дисков и многое другое.
 
+### ☕ Донат
+Кнопка с чашкой кофе вверху посередине открывает окно с реквизитами автора. Donations are completely optional — Folix stays free for everyone.
+
 ### 🧾 Журнал ошибок
 Folix записывает каждую ошибку: при копировании, подключении к устройству, открытии папки или подсчёте размеров. Если программа аварийно закроется, в журнал попадёт и место сбоя. Журнал открывается маленькой иконкой в правом нижнем углу (при наведении появляется подсказка «Логи»). Красная точка на ней значит, что появились новые ошибки. Записи можно скопировать одной кнопкой и отправить разработчику.
 
@@ -90,7 +93,7 @@ Folix записывает каждую ошибку: при копирован�
 Оба файла лежат на странице [релизов](https://github.com/Bryal52/Folix/releases/latest).
 
 ### 🍏 macOS
-1. Скачайте **[Folix-1.1.0.dmg](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0.dmg)**.
+1. Скачайте **[Folix-1.1.1.dmg](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.1.dmg)**.
 2. Откройте его и перетащите **Folix** в папку **«Программы»**.
 3. При первом запуске macOS скажет, что не может проверить разработчика: у Folix нет платной подписи Apple. Откройте **Системные настройки → Конфиденциальность и безопасность** и внизу нажмите **«Всё равно открыть»**. Это нужно сделать только один раз.
 
@@ -99,7 +102,7 @@ Folix записывает каждую ошибку: при копирован�
 Для превью видео и работы с телефоном по USB: `brew install ffmpeg android-platform-tools`
 
 ### 🪟 Windows
-1. Скачайте **[Folix-1.1.0-windows-x64.zip](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0-windows-x64.zip)**.
+1. Скачайте **[Folix-1.1.1-windows-x64.zip](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.1-windows-x64.zip)**.
 2. Распакуйте архив в любое место, например в `C:\Программы\Folix`.
 3. Запустите **Folix.exe**. Если Windows покажет «Система Windows защитила ваш компьютер», нажмите **«Подробнее» → «Выполнить в любом случае»**: у Folix нет платной цифровой подписи.
 

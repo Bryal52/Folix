@@ -6,6 +6,7 @@
 #include "ConnectionDialog.h"
 #include "Devices.h"
 #include "Dialogs.h"
+#include "Donate.h"
 #include "FilePanel.h"
 #include "FullDiskAccess.h"
 #include "InfoDialog.h"
@@ -96,6 +97,7 @@ MainWindow::MainWindow()
 
     m_left = new FilePanel;
     m_right = new FilePanel;
+    m_left->addToolWidget(new DonateButton);   // in the middle of the window, between the panels
     m_active = m_left;
 
     auto* splitter = new QSplitter(Qt::Horizontal);

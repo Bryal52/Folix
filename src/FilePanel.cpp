@@ -229,6 +229,7 @@ FilePanel::FilePanel(QWidget* parent) : QWidget(parent)
     top->addWidget(m_edit);
     top->addWidget(m_path, 1);
     top->addWidget(m_refresh);
+    m_top = top;
 
     m_model = new FileModel(this);
     m_view = new PanelView(this);
@@ -733,6 +734,11 @@ void FilePanel::calcSizes(const QList<Entry>& dirs)
             }, Qt::QueuedConnection);
         });
     }
+}
+
+void FilePanel::addToolWidget(QWidget* w)
+{
+    m_top->addWidget(w);
 }
 
 QByteArray FilePanel::saveHeader() const

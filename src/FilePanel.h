@@ -9,6 +9,7 @@
 #include <QWidget>
 
 class FileModel;
+class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QThreadPool;
@@ -76,6 +77,8 @@ public:
     void calcAllSizes();
     void refreshDevices();
     QByteArray saveHeader() const;
+    // Extra button at the end of the top bar (the donate button sits in the left panel's).
+    void addToolWidget(QWidget* w);
     void restoreHeader(const QByteArray& state);
 
 signals:
@@ -113,6 +116,7 @@ private:
     DeviceCombo* m_combo;
     QToolButton* m_edit;
     QToolButton* m_refresh;
+    QHBoxLayout* m_top = nullptr;
     QLineEdit* m_path;
     PanelView* m_view;
     FileModel* m_model;

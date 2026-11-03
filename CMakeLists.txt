@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Folix VERSION 1.1.0 LANGUAGES CXX)
+project(Folix VERSION 1.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -47,6 +47,7 @@ set(FOLIX_SOURCES
     src/Log.cpp src/Log.h
     src/LogViewer.cpp src/LogViewer.h
     src/Archives.cpp src/Archives.h
+    src/Donate.cpp src/Donate.h
     src/ArchiveBackend.cpp src/ArchiveBackend.h
     resources/folix.qrc
 )
