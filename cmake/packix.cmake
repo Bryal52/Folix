@@ -53,7 +53,7 @@ if(APPLE)
     target_link_libraries(packix_ui PUBLIC
         "-framework AppKit" "-framework Security" "-framework UniformTypeIdentifiers" "-framework UserNotifications")
 elseif(WIN32)
-    target_link_libraries(packix_ui PUBLIC shell32 ole32 advapi32 crypt32)
+    target_link_libraries(packix_ui PUBLIC shell32 ole32 advapi32 crypt32 dwmapi)
 endif()
 
 # Runtime files for Folix: Packix's data (formats, theme, texts) and the 7-Zip engine with its license.
