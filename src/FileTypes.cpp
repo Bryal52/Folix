@@ -623,6 +623,11 @@ QIcon deviceIcon(DeviceKind kind)
             p.drawEllipse(QPointF(16, 16), 3.6, 8);
             p.drawLine(QPointF(8, 16), QPointF(24, 16));
             break;
+        case DeviceKind::Archive:
+            drawBigTile(p, QColor(210, 74, 62));   // Packix's soft red
+            p.translate(0, -4);
+            drawZipper(p, kWhite);
+            break;
         }
     });
     cache.insert(int(kind), icon);

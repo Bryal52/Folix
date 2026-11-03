@@ -30,6 +30,7 @@ QString Devices::kindName(DeviceKind kind)
     case DeviceKind::Switch: return QStringLiteral("Nintendo Switch");
     case DeviceKind::PS3: return QStringLiteral("PlayStation 3");
     case DeviceKind::Other: return QStringLiteral("FTP");
+    case DeviceKind::Archive: return QStringLiteral("Архив");
     }
     return {};
 }

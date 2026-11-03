@@ -26,6 +26,8 @@ public:
 
     QList<DeviceChoice> choices();
     BackendPtr backend(const QString& key);
+    // Backends that are not devices (an open archive) are registered by whoever opens them.
+    void registerBackend(const QString& key, const BackendPtr& b) { m_remote.insert(key, b); }
     QString startPath(const QString& key);
     std::shared_ptr<LocalBackend> local() const { return m_local; }
 

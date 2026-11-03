@@ -1,5 +1,7 @@
 #include "FilePanel.h"
 
+#include "ArchiveBackend.h"
+#include "Archives.h"
 #include "Devices.h"
 #include "Dialogs.h"
 #include "FileModel.h"
@@ -7,12 +9,15 @@
 #include "Log.h"
 #include "Platform.h"
 #include "Preview.h"
+
+#include "../third_party/Packix/dialogs/Theme.h"
 #include "SizeIndex.h"
 #include "Tools.h"
 
 #include <QApplication>
 #include <QCursor>
 #include <QDrag>
+#include <QFileInfo>
 #include <QFutureWatcher>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -340,7 +345,8 @@ void FilePanel::setLocation(const QString& key, const QString& dir, bool interac
     m_free = -1;
     m_model->setEntries({}, false);
     refreshDevices();
-    if (!b->isLocal())
+    applyTint();
+    if (!b->isLocal() && b->kind() != DeviceKind::Archive)   // archive sizes come from its listing
         SizeIndex::instance().ensure(b);
     navigate(dir.isEmpty() ? b->homePath() : dir, {}, interactive);
 }
@@ -380,7 +386,7 @@ void FilePanel::navigate(const QString& dir, const QString& selectName, bool int
             const QString root = SizeIndex::localRootFor(dir);
             if (!root.isEmpty())
                 SizeIndex::instance().ensure(b, root);   // home folder or an external drive
-        } else {
+        } else if (b->kind() != DeviceKind::Archive) {
             SizeIndex::instance().ensure(b);   // rescans if the data is older than a day
         }
         const QHash<QString, qint64> sizes = indexSizes(entries);
@@ -389,7 +395,8 @@ void FilePanel::navigate(const QString& dir, const QString& selectName, bool int
                 e.size = sizes.value(e.name);
         }
         m_model->setLocalDir(b->isLocal() ? dir : QString());
-        m_model->setEntries(entries, dir != QLatin1String("/"));
+        // ".." also at an archive's top level: it leads back to the folder with the archive.
+        m_model->setEntries(entries, dir != QLatin1String("/") || b->kind() == DeviceKind::Archive);
         if (m_model->rowCount() > 0) {
             int row = selectName.isEmpty() ? -1 : m_model->rowOfName(selectName);
             if (row < 0)
@@ -431,6 +438,16 @@ void FilePanel::reload(const QString& selectName)
 
 void FilePanel::goUp()
 {
+    // Out of an archive's top level: back to the folder it lies in, with the archive selected.
+    if (m_dir == QLatin1String("/")) {
+        if (auto* archive = dynamic_cast<ArchiveBackend*>(m_backend.get())) {
+            const QString folder = QFileInfo(archive->archivePath()).absolutePath();
+            const QString name = QFileInfo(archive->archivePath()).fileName();
+            setLocation(QStringLiteral("mac:") + folder, folder);
+            navigate(folder, name);
+            return;
+        }
+    }
     if (m_dir.isEmpty() || m_dir == QLatin1String("/"))
         return;
     navigate(parentPath(m_dir), baseName(m_dir));
@@ -452,8 +469,28 @@ void FilePanel::openCurrent()
     }
     if (e.isDir)
         navigate(joinPath(m_dir, e.name));
+    else if (m_backend->isLocal() && Archives::isArchive(e.name))
+        emit openArchive(this, e);
     else
         emit openFile(this, e);
+}
+
+void FilePanel::applyTint()
+{
+    // Inside an archive the panel takes Packix's soft red; everywhere else Folix's own colours.
+    if (m_backend && m_backend->kind() == DeviceKind::Archive) {
+        const packix::ui::Theme& theme = packix::ui::Theme::get();
+        QPalette pal = QApplication::palette();
+        for (auto group : {QPalette::Active, QPalette::Inactive}) {
+            pal.setColor(group, QPalette::Highlight, theme.color("selection"));
+            pal.setColor(group, QPalette::HighlightedText, theme.color("selectionText"));
+            pal.setColor(group, QPalette::Base, theme.color("tint"));
+            pal.setColor(group, QPalette::AlternateBase, theme.color("hover"));
+        }
+        setPalette(pal);
+    } else {
+        setPalette(QApplication::palette());
+    }
 }
 
 QList<Entry> FilePanel::selectedEntries() const

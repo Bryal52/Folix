@@ -12,7 +12,7 @@
 #include <memory>
 #include <stdexcept>
 
-enum class DeviceKind { Mac, Android, Vita, Switch, PS3, Other };
+enum class DeviceKind { Mac, Android, Vita, Switch, PS3, Other, Archive };
 
 struct Entry {
     QString name;

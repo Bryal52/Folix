@@ -1,3 +1,4 @@
+#include "Archives.h"
 #include "Log.h"
 #include "MainWindow.h"
 
@@ -19,6 +20,8 @@ int main(int argc, char* argv[])
     QApplication::setOrganizationName(QStringLiteral("Folix"));
     QApplication::setApplicationVersion(QStringLiteral(FOLIX_VERSION));
     Log::install();
+    Archives::init();
+    QObject::connect(&app, &QApplication::aboutToQuit, [] { Archives::shutdown(); });
 #ifndef Q_OS_MACOS
     QApplication::setWindowIcon(QIcon(QStringLiteral(":/icon.png")));   // the Mac takes it from the bundle
 #endif

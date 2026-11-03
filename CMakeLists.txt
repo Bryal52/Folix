@@ -1,13 +1,19 @@
 cmake_minimum_required(VERSION 3.21)
-project(Folix VERSION 1.0.0 LANGUAGES CXX)
+project(Folix VERSION 1.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
+if(APPLE)
+    enable_language(OBJCXX)   # Packix's macOS layer is Objective-C++
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets Concurrent Network Multimedia MultimediaWidgets)
 find_package(CURL REQUIRED)
+
+include(cmake/packix.cmake)
 
 # App icon from logo.png (transparent corners, every size)
 add_executable(makeicon tools/makeicon.cpp)
@@ -40,6 +46,8 @@ set(FOLIX_SOURCES
     src/FullDiskAccess.cpp src/FullDiskAccess.h
     src/Log.cpp src/Log.h
     src/LogViewer.cpp src/LogViewer.h
+    src/Archives.cpp src/Archives.h
+    src/ArchiveBackend.cpp src/ArchiveBackend.h
     resources/folix.qrc
 )
 
@@ -89,4 +97,13 @@ endif()
 
 target_compile_definitions(Folix PRIVATE FOLIX_VERSION="${PROJECT_VERSION}")
 target_link_libraries(Folix PRIVATE
-    Qt6::Widgets Qt6::Concurrent Qt6::Network Qt6::Multimedia Qt6::MultimediaWidgets CURL::libcurl)
+    Qt6::Widgets Qt6::Concurrent Qt6::Network Qt6::Multimedia Qt6::MultimediaWidgets CURL::libcurl packix_ui)
+folix_bundle_packix(Folix)
+
+# Archive tests (not part of the app): cmake --build build --target tst_archive && build/tst_archive
+add_executable(tst_archive EXCLUDE_FROM_ALL tests/tst_archive.cpp
+    src/ArchiveBackend.cpp src/Archives.cpp src/Backend.cpp src/LocalBackend.cpp src/Platform.cpp
+    src/Operations.cpp src/JobDialog.cpp src/Tools.cpp src/Log.cpp)
+target_include_directories(tst_archive PRIVATE src)
+target_compile_definitions(tst_archive PRIVATE FOLIX_VERSION="${PROJECT_VERSION}")
+target_link_libraries(tst_archive PRIVATE packix_ui Qt6::Network)

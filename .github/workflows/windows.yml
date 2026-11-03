@@ -21,6 +21,12 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true   # third_party/Packix: the archive engine and its windows
+
+      - name: 7-Zip for archives
+        shell: pwsh
+        run: if (-not (Test-Path "C:\Program Files\7-Zip\7z.exe")) { choco install 7zip -y --no-progress }
 
       - uses: msys2/setup-msys2@v2
         with:
@@ -48,6 +54,10 @@ jobs:
           mkdir -p dist/Folix
           cp build/Folix.exe dist/Folix/
           cp /ucrt64/bin/ffmpeg.exe /ucrt64/bin/ffprobe.exe dist/Folix/
+          # Packix inside Folix: its data files and the 7-Zip engine with its license
+          cp -r build/shared dist/Folix/
+          cp build/7zip-License.txt dist/Folix/
+          cp "/c/Program Files/7-Zip/7z.exe" "/c/Program Files/7-Zip/7z.dll" dist/Folix/
           DEPLOY=$(command -v windeployqt6 || command -v windeployqt || echo /ucrt64/share/qt6/bin/windeployqt.exe)
           "$DEPLOY" --release --no-translations --compiler-runtime dist/Folix/Folix.exe
           # Qt's own libraries come from windeployqt; their MSYS2 dependencies are added here.

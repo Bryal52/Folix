@@ -1,5 +1,6 @@
 #include "Operations.h"
 
+#include "ArchiveBackend.h"
 #include "JobDialog.h"
 #include "LocalBackend.h"
 #include "Tools.h"
@@ -170,6 +171,39 @@ void runTransfer(JobState& st, const TransferRequest& r)
         items = rest;
         if (items.isEmpty())
             return;
+    }
+
+    // Archives: the whole selection in one 7-Zip run instead of one per file.
+    auto progress = [&st](qint64 done, qint64 total) {
+        st.setProgress(done, total);
+        return !st.cancel.load();
+    };
+    if (auto* archive = dynamic_cast<ArchiveBackend*>(r.src.get()); archive && dst.isLocal()) {
+        QStringList paths;
+        for (const Entry& e : std::as_const(items))
+            paths << joinPath(r.srcDir, e.name);
+        st.setCurrent(QStringLiteral("Распаковка из «%1»").arg(archive->title()));
+        archive->extractTo(paths, r.dstDir, r.overwrite, progress);
+        if (r.move) {
+            st.setCurrent(QStringLiteral("Удаление из архива"));
+            for (const QString& p : std::as_const(paths))
+                archive->removeRecursive(p);
+        }
+        return;
+    }
+    if (auto* archive = dynamic_cast<ArchiveBackend*>(r.dst.get()); archive && src.isLocal()) {
+        QStringList paths;
+        for (const Entry& e : std::as_const(items)) {
+            for (const QString& n : realNames(e))
+                paths << joinPath(r.srcDir, n);
+        }
+        st.setCurrent(QStringLiteral("Добавление в «%1»").arg(archive->title()));
+        archive->addFrom(paths, r.dstDir, progress);
+        if (r.move) {
+            for (const QString& p : std::as_const(paths))
+                src.removeRecursive(p);
+        }
+        return;
     }
 
     // Plan everything first so the progress bar knows the total.

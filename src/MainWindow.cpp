@@ -1,5 +1,7 @@
 #include "MainWindow.h"
 
+#include "ArchiveBackend.h"
+#include "Archives.h"
 #include "AutoOpen.h"
 #include "ConnectionDialog.h"
 #include "Devices.h"
@@ -19,6 +21,8 @@
 #include "Viewer.h"
 
 #include <QApplication>
+#include <QCheckBox>
+#include <QDialogButtonBox>
 #include <QCloseEvent>
 #include <QCoreApplication>
 #include <QClipboard>
@@ -34,6 +38,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QProcess>
+#include <QLabel>
 #include <QPushButton>
 #include <QSettings>
 #include <QSplitter>
@@ -42,6 +47,16 @@
 #include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
+
+#include "../third_party/Packix/core/Archiver.h"
+#include "../third_party/Packix/dialogs/Actions.h"
+#include "../third_party/Packix/dialogs/Dialogs.h"
+
+// An archive opened by Folix itself (Packix app not used): its listing and password.
+struct ArchiveSession {
+    packix::ArchiveInfo info;
+    QString password;
+};
 
 namespace {
 
@@ -100,6 +115,7 @@ MainWindow::MainWindow()
     for (FilePanel* p : {m_left, m_right}) {
         connect(p, &FilePanel::activated, this, &MainWindow::setActive);
         connect(p, &FilePanel::openFile, this, &MainWindow::openFile);
+        connect(p, &FilePanel::openArchive, this, &MainWindow::openArchive);
         connect(p, &FilePanel::switchRequested, this, [this, p] {
             FilePanel* o = other(p);
             setActive(o);
@@ -177,6 +193,13 @@ void MainWindow::buildMenus()
             return;
         Platform::reveal(p->hasCurrent() ? joinPath(p->dir(), p->currentEntry().name) : p->dir());
     });
+    add(file, QStringLiteral("Архивировать…"), {QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_A)},
+        [this] { archiveSelected(); });
+    add(file, QStringLiteral("Распаковать…"), {QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_E)},
+        [this] { extractSelected(false); });
+    file->addSeparator();
+    QAction* settings = add(file, QStringLiteral("Настройки…"), {QKeySequence::Preferences}, [this] { showSettings(); });
+    settings->setMenuRole(QAction::PreferencesRole);
     add(file, QStringLiteral("Новое FTP-подключение…"), {QKeySequence(Qt::CTRL | Qt::Key_K)},
         [this] { newConnection(m_active); });
 
@@ -819,6 +842,30 @@ void MainWindow::showContextMenu(FilePanel* panel, const QPoint& globalPos, bool
             connect(inside, &QAction::triggered, this, [panel, path] { panel->navigate(path); });
         }
         menu.addAction(m_actView);
+        // Archives: Packix (if installed and allowed) or Folix's own archive windows.
+        if (Archives::enabled()) {
+            const bool inArchive = panel->backend() && panel->backend()->kind() == DeviceKind::Archive;
+            const bool onArchive = local && panel->hasCurrent() && Archives::isArchive(panel->currentEntry().name);
+            if (onArchive || local || inArchive)
+                menu.addSeparator();
+            if (onArchive && Archives::useApp()) {
+                QAction* a = menu.addAction(QStringLiteral("Открыть в Packix"));
+                connect(a, &QAction::triggered, this, [this] { extractSelected(false); });
+            } else if (onArchive) {
+                QAction* a = menu.addAction(QStringLiteral("Распаковать…"));
+                connect(a, &QAction::triggered, this, [this] { extractSelected(false); });
+                QAction* b = menu.addAction(QStringLiteral("Распаковать в другую панель"));
+                connect(b, &QAction::triggered, this, [this] { extractSelected(true); });
+            } else if (inArchive) {
+                QAction* a = menu.addAction(QStringLiteral("Распаковать в другую панель"));
+                connect(a, &QAction::triggered, this, [this] { copyOrMove(false); });
+            }
+            if (local) {
+                QAction* a = menu.addAction(Archives::useApp() ? QStringLiteral("Архивировать в Packix…")
+                                                               : QStringLiteral("Архивировать…"));
+                connect(a, &QAction::triggered, this, [this] { archiveSelected(); });
+            }
+        }
         menu.addSeparator();
         menu.addAction(m_actCopy);
         menu.addAction(m_actCut);
@@ -847,6 +894,151 @@ void MainWindow::showContextMenu(FilePanel* panel, const QPoint& globalPos, bool
     }
     menu.exec(globalPos);
     m_actPaste->setEnabled(true);
+}
+
+bool MainWindow::loadArchive(const QString& path, ArchiveSession* out)
+{
+    const QString name = QFileInfo(path).fileName();
+    packix::Status st;
+    JobDialog::run(this, QStringLiteral("Открываю архив"), [&](JobState& s) {
+        s.setCurrent(name);
+        st = packix::Archiver::open(path, QString(), out->info);
+    });
+    if (st.error == packix::Error::NeedPassword || st.error == packix::Error::WrongPassword) {
+        // Hidden names: Packix's password window (tries saved passwords first).
+        if (!packix::ui::Actions::open(this, path, &out->info, &out->password))
+            return false;
+    } else if (!st.ok()) {
+        packix::ui::Dialogs::showError(this, st, name);
+        return false;
+    }
+    // Names are visible but the contents are encrypted: ask now, not on every file.
+    if (out->info.anyEncrypted && out->password.isEmpty()
+        && !packix::ui::Actions::ensurePassword(this, out->info, &out->password))
+        return false;
+    return true;
+}
+
+void MainWindow::openArchive(FilePanel* panel, const Entry& e)
+{
+    const QString path = joinPath(panel->dir(), e.name);
+    if (Archives::useApp()) {
+        Archives::openInPackix({path});
+        return;
+    }
+    ArchiveSession session;
+    if (!loadArchive(path, &session))
+        return;
+    const QString key = QStringLiteral("archive:") + path;
+    Devices::instance().registerBackend(key, std::make_shared<ArchiveBackend>(path, session.info, session.password));
+    setActive(panel);
+    panel->setLocation(key, QStringLiteral("/"));
+}
+
+void MainWindow::archiveSelected()
+{
+    FilePanel* p = m_active;
+    if (!Archives::enabled() || !p->backend() || !p->backend()->isLocal()) {
+        Dialogs::info(this, QStringLiteral("Архивировать можно файлы на компьютере"),
+                      QStringLiteral("Выберите файлы или папки в панели с папкой компьютера."));
+        return;
+    }
+    QStringList paths;
+    for (const Entry& e : p->selectedEntries()) {
+        for (const QString& n : realNames(e))
+            paths << joinPath(p->dir(), n);
+    }
+    if (paths.isEmpty())
+        return;
+    if (Archives::useApp() && Archives::archiveInPackix(paths))
+        return;
+    packix::ui::Actions::createArchive(paths, this, [p](const QString& archive) {
+        p->reload(QFileInfo(archive).fileName());
+    });
+}
+
+void MainWindow::extractSelected(bool toOtherPanel)
+{
+    FilePanel* p = m_active;
+    if (!p->backend() || !p->backend()->isLocal() || !p->hasCurrent() || !Archives::isArchive(p->currentEntry().name)) {
+        Dialogs::info(this, QStringLiteral("Выберите архив"), QStringLiteral("Встаньте на архив в панели с папкой компьютера."));
+        return;
+    }
+    const QString path = joinPath(p->dir(), p->currentEntry().name);
+    if (Archives::useApp()) {
+        Archives::openInPackix({path});
+        return;
+    }
+    auto session = std::make_shared<ArchiveSession>();
+    if (!loadArchive(path, session.get()))
+        return;
+    FilePanel* target = other(p);
+    const QString destination = (toOtherPanel && target->backend() && target->backend()->isLocal()) ? target->dir() : QString();
+    packix::ui::Actions::extract(this, session->info, {}, &session->password, destination,
+                                 [this, session](const packix::Status&, const QStringList&) {
+                                     m_left->reload();
+                                     m_right->reload();
+                                 });
+}
+
+void MainWindow::showSettings()
+{
+    QDialog dlg(this);
+    dlg.setWindowModality(Qt::WindowModal);
+    dlg.setWindowTitle(QStringLiteral("Настройки"));
+    dlg.setMinimumWidth(480);
+
+    auto* title = new QLabel(QStringLiteral("Архивы"), &dlg);
+    QFont tf = title->font();
+    tf.setBold(true);
+    title->setFont(tf);
+
+    auto* enabled = new QCheckBox(QStringLiteral("Работать с архивами"), &dlg);
+    enabled->setChecked(Archives::enabled());
+    auto* enabledHint = new QLabel(QStringLiteral("Folix открывает zip, 7z, rar, tar и другие архивы и умеет их создавать. "
+                                                  "Если выключить, архивы будут обычными файлами."), &dlg);
+
+    auto* useApp = new QCheckBox(QStringLiteral("Передавать архивы приложению Packix, если оно установлено"), &dlg);
+    useApp->setChecked(Archives::preferPackixApp());
+    const QString app = Archives::packixApp();
+    auto* appHint = new QLabel(app.isEmpty()
+        ? QStringLiteral("Packix не установлен — архивы открывает сам Folix.")
+        : QStringLiteral("Packix установлен: %1. Если выключить, Folix будет открывать архивы у себя в панели.")
+              .arg(QDir::toNativeSeparators(app)), &dlg);
+    for (QLabel* hint : {enabledHint, appHint}) {
+        hint->setWordWrap(true);
+        hint->setForegroundRole(QPalette::PlaceholderText);
+    }
+    useApp->setEnabled(enabled->isChecked());
+    appHint->setEnabled(enabled->isChecked());
+    connect(enabled, &QCheckBox::toggled, &dlg, [useApp, appHint](bool on) {
+        useApp->setEnabled(on);
+        appHint->setEnabled(on);
+    });
+
+    auto* buttons = new QDialogButtonBox(&dlg);
+    buttons->addButton(QStringLiteral("Отмена"), QDialogButtonBox::RejectRole);
+    QPushButton* ok = buttons->addButton(QStringLiteral("Сохранить"), QDialogButtonBox::AcceptRole);
+    ok->setDefault(true);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    auto* layout = new QVBoxLayout(&dlg);
+    layout->setContentsMargins(20, 18, 20, 16);
+    layout->setSpacing(8);
+    layout->addWidget(title);
+    layout->addWidget(enabled);
+    layout->addWidget(enabledHint);
+    layout->addSpacing(6);
+    layout->addWidget(useApp);
+    layout->addWidget(appHint);
+    layout->addSpacing(10);
+    layout->addWidget(buttons);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+    Archives::setEnabled(enabled->isChecked());
+    Archives::setPreferPackixApp(useApp->isChecked());
 }
 
 void MainWindow::ejectDrive()

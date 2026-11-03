@@ -81,6 +81,7 @@ public:
 signals:
     void activated(FilePanel* panel);
     void openFile(FilePanel* panel, const Entry& e);
+    void openArchive(FilePanel* panel, const Entry& e);
     void switchRequested();
     void newConnectionRequested(FilePanel* panel);
     void editConnectionRequested(FilePanel* panel);
@@ -99,6 +100,7 @@ private:
     void showHover();
     QHash<QString, qint64> indexSizes(const QList<Entry>& entries) const;
     void hideHover();
+    void applyTint();
 
     BackendPtr m_backend;
     QString m_key;

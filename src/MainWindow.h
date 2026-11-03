@@ -45,6 +45,11 @@ private:
     void copyToClipboard(bool cut);
     void paste();
     void showContextMenu(FilePanel* panel, const QPoint& globalPos, bool onItem);
+    void openArchive(FilePanel* panel, const Entry& e);
+    bool loadArchive(const QString& path, struct ArchiveSession* out);
+    void archiveSelected();
+    void extractSelected(bool toOtherPanel);
+    void showSettings();
     void buildDiskMenu(QMenu* menu);
     void ejectDrive();
     void startLocalServer();
