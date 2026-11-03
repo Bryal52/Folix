@@ -14,13 +14,13 @@
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows" alt="Windows 10 / 11">
   <img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus" alt="C++20">
   <img src="https://img.shields.io/badge/Qt-6-41CD52?logo=qt" alt="Qt 6">
-  <a href="https://github.com/Bryal52/Folix/releases/latest"><img src="https://img.shields.io/badge/%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F-1.0.0-0a84ff" alt="Версия 1.0.0"></a>
+  <a href="https://github.com/Bryal52/Folix/releases/latest"><img src="https://img.shields.io/badge/%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F-1.1.0-0a84ff" alt="Версия 1.1.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.0.0.dmg"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_macOS-1.0.0-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать для macOS" height="36"></a>
+  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0.dmg"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_macOS-1.1.0-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать для macOS" height="36"></a>
   &nbsp;
-  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.0.0-windows-x64.zip"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_Windows-1.0.0-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать для Windows" height="36"></a>
+  <a href="https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0-windows-x64.zip"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C_%D0%B4%D0%BB%D1%8F_Windows-1.1.0-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать для Windows" height="36"></a>
 </p>
 
 ---
@@ -48,6 +48,13 @@ Folix сам считает размер каждой папки и держит
 
 ### 📱 Телефоны и сетевые устройства
 Файлы на телефоне по USB и на любом устройстве с FTP-сервером открываются так же, как папки на компьютере. Подключения сохраняются, чтобы не вводить адрес каждый раз.
+
+### 🗜 Архивы — вместе с [Packix](https://github.com/Bryal52/Packix)
+Внутри Folix работает движок архиватора Packix (7-Zip): zip, 7z, rar, tar и ещё два десятка форматов, архивы с паролем и многотомные архивы.
+- Enter на архиве открывает его прямо в панели как папку, с мягким красным оттенком. Размеры папок внутри видны сразу.
+- F5 из архива — распаковать, F5 в архив — добавить. Новая папка и удаление внутри архива тоже работают.
+- Правый клик → **«Архивировать…»** и **«Распаковать…»** (сюда, в другую панель или в любую папку).
+- Если установлено приложение **Packix**, Folix передаёт архивы ему. Это можно выключить в **Настройках** (⌘, / Ctrl+,), там же можно выключить работу с архивами совсем.
 
 ### 📦 Программы
 Отдельный раздел со всеми установленными приложениями, их настоящими иконками и размерами. Сразу видно, что занимает больше всего места.
@@ -83,7 +90,7 @@ Folix записывает каждую ошибку: при копирован�
 Оба файла лежат на странице [релизов](https://github.com/Bryal52/Folix/releases/latest).
 
 ### 🍏 macOS
-1. Скачайте **[Folix-1.0.0.dmg](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.0.0.dmg)**.
+1. Скачайте **[Folix-1.1.0.dmg](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0.dmg)**.
 2. Откройте его и перетащите **Folix** в папку **«Программы»**.
 3. При первом запуске macOS скажет, что не может проверить разработчика: у Folix нет платной подписи Apple. Откройте **Системные настройки → Конфиденциальность и безопасность** и внизу нажмите **«Всё равно открыть»**. Это нужно сделать только один раз.
 
@@ -92,7 +99,7 @@ Folix записывает каждую ошибку: при копирован�
 Для превью видео и работы с телефоном по USB: `brew install ffmpeg android-platform-tools`
 
 ### 🪟 Windows
-1. Скачайте **[Folix-1.0.0-windows-x64.zip](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.0.0-windows-x64.zip)**.
+1. Скачайте **[Folix-1.1.0-windows-x64.zip](https://github.com/Bryal52/Folix/releases/latest/download/Folix-1.1.0-windows-x64.zip)**.
 2. Распакуйте архив в любое место, например в `C:\Программы\Folix`.
 3. Запустите **Folix.exe**. Если Windows покажет «Система Windows защитила ваш компьютер», нажмите **«Подробнее» → «Выполнить в любом случае»**: у Folix нет платной цифровой подписи.
 
@@ -107,7 +114,8 @@ Folix записывает каждую ошибку: при копирован�
 **macOS:** нужны macOS 27 или новее и Xcode Command Line Tools.
 
 ```sh
-brew install cmake ninja qtbase qtmultimedia qtimageformats ffmpeg android-platform-tools
+git clone --recursive https://github.com/Bryal52/Folix.git   # вместе с Packix
+brew install cmake ninja qtbase qtmultimedia qtimageformats ffmpeg sevenzip android-platform-tools
 ./build.sh
 ```
 
@@ -117,7 +125,7 @@ brew install cmake ninja qtbase qtmultimedia qtimageformats ffmpeg android-platf
 
 ## 🧩 Из чего сделан
 
-C++20 и Qt 6, libcurl для работы по сети, ffmpeg для превью видео. Системные API для быстрого сканирования и шифрования: на macOS getattrlistbulk, FSEvents и Связка ключей, на Windows FindFirstFileEx и DPAPI.
+C++20 и Qt 6, libcurl для работы по сети, ffmpeg для превью видео, [Packix](https://github.com/Bryal52/Packix) и 7-Zip для архивов. Системные API для быстрого сканирования и шифрования: на macOS getattrlistbulk, FSEvents и Связка ключей, на Windows FindFirstFileEx и DPAPI.
 
 ---
 
